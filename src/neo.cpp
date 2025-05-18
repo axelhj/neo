@@ -42,6 +42,12 @@
     #include <ncurses.h>
 #endif
 
+#define MAX_LEN 10000
+
+#define COLORS 25000
+
+#define COLOR_PAIRS 25000
+
 using namespace std;
 using namespace chrono;
 
@@ -101,49 +107,56 @@ ColorContent ParseColorLine(char* line, size_t lineNum) {
 unsigned ParseColorFileVersion(FILE* colorFile, size_t* numLines) {
     static constexpr unsigned long latestVersion = 1;
     unsigned long version = latestVersion;
-    char* line = nullptr;
-    size_t lineLen;
+    char* line = (char*)malloc(MAX_LEN);
+    if (!line)
+        Die("Malloc failed\n");
 
     // Ignore any comments and blank lines at the beginning of the file
-    while (fgets(line, lineLen, colorFile) != nullptr) {
+    do {
+        char* readLine = fgets(line, MAX_LEN, colorFile);
+        if (readLine == 0) {
+            // Reached the end of the color file.
+            break;
+        }
+        line = readLine;
         *numLines += 1;
-        if (!line || *line == '\0' || *line == '\n' || *line == ';' ||
+        if (*line == '\0' || *line == '\n' || *line == ';' ||
             *line == '#' || *line == '/' || *line == '*' || *line == '@')
         {
             continue;
         }
         break;
-    }
-    if (!line)
+    } while (true);
+    if (!*line)
         Die("Invalid color file\n");
 
     if (strstr(line, "neo_color_version")) {
         char* tok = strtok(line, " ");
         if (!tok) {
-            if (line)
-                free(line);
+            free(line);
             Die("Invalid color file version\n");
         }
         tok = strtok(nullptr, " ");
         if (!tok) {
-            if (line)
-                free(line);
+            free(line);
             Die("Invalid color file version\n");
         }
         version = strtoul(tok, nullptr, 10);
-        if (version == ULONG_MAX || !version)
+        if (version == ULONG_MAX || !version) {
+            free(line);
             Die("Invalid color file version\n");
-        else if (version > latestVersion)
+        } else if (version > latestVersion) {
+            free(line);
             Die("Color file version (%lu) is newer than supported (%lu)\n",
                 version, latestVersion);
+        }
     } else {
         // Assume that the first line is color content since no version string
         // was found
         rewind(colorFile);
     }
 
-    if (line)
-        free(line);
+    free(line);
 
     return version;
 }
@@ -158,26 +171,36 @@ vector<ColorContent> ParseColorFile(const char* filename) {
     (void) ParseColorFileVersion(colorFile, &numLines);
 
     vector<ColorContent> colors;
-    char* line = nullptr;
-    size_t lineLen;
+    char* line = (char*)malloc(MAX_LEN);
     size_t numColorPairs = 0;
 
-    while (fgets(line, lineLen, colorFile) != nullptr) {
+    if (!line)
+        Die("Malloc failed\n");
+
+    do {
+        char* readLine = fgets(line, MAX_LEN, colorFile);
+        if (readLine == 0) {
+            // Reached the end of the color file.
+            break;
+        }
+        line = readLine;
         numLines++;
-        if (!line || *line == '\0' || *line == '\n' || *line == ';' ||
+        if (*line == '\0' || *line == '\n' || *line == ';' ||
             *line == '#' || *line == '/' || *line == '*' || *line == '@')
         {
             continue;
         }
         numColorPairs++;
         if (numColorPairs > static_cast<size_t>(COLOR_PAIRS))
+        {
+            free(line);
             Die("Color file has too many lines (max %d)\n", COLOR_PAIRS);
+        }
 
         ColorContent cc = ParseColorLine(line, numLines);
         colors.push_back(cc);
-    }
-    if (line)
-        free(line);
+    } while (true);
+    free(line);
     if (numLines < 2)
         Die("Color file must have at least two colors\n");
 
