@@ -105,7 +105,7 @@ unsigned ParseColorFileVersion(FILE* colorFile, size_t* numLines) {
     size_t lineLen;
 
     // Ignore any comments and blank lines at the beginning of the file
-    while (getline(&line, &lineLen, colorFile) != -1) {
+    while (fgets(line, lineLen, colorFile) != nullptr) {
         *numLines += 1;
         if (!line || *line == '\0' || *line == '\n' || *line == ';' ||
             *line == '#' || *line == '/' || *line == '*' || *line == '@')
@@ -162,7 +162,7 @@ vector<ColorContent> ParseColorFile(const char* filename) {
     size_t lineLen;
     size_t numColorPairs = 0;
 
-    while (getline(&line, &lineLen, colorFile) != -1) {
+    while (fgets(line, lineLen, colorFile) != nullptr) {
         numLines++;
         if (!line || *line == '\0' || *line == '\n' || *line == ';' ||
             *line == '#' || *line == '/' || *line == '*' || *line == '@')
@@ -824,7 +824,7 @@ int main(int argc, char* argv[]) {
     // Determine whether to use UTF-8 or ASCII based on the locale
     bool ascii = true;
     char* loc = setlocale(LC_ALL, "");
-    if (loc && strcasestr(loc, "UTF") != nullptr)
+    if (loc && strcasecmp(loc, "UTF") != 0)
         ascii = false;
 
     if (InitCurses(usrColorMode, &colorMode) == ERR)
