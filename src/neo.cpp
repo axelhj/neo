@@ -823,7 +823,7 @@ int main(int argc, char* argv[]) {
 
     // Determine whether to use UTF-8 or ASCII based on the locale
     bool ascii = true;
-    char* loc = setlocale(LC_ALL, "");
+    char* loc = setlocale(LC_ALL, 0);
     if (loc && strcasecmp(loc, "UTF") != 0)
         ascii = false;
 
